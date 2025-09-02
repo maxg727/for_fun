@@ -1,103 +1,135 @@
+
 RULEBOOK = """
-# THE OFFICIAL GOVERNING DOCUMENT OF THE FANTASY FOOTBALL KEEPER LEAGUE
+# FANTASY FOOTBALL LEAGUE CONSTITUTION & GOVERNING INSTRUMENT
 
-**PREAMBLE:**
-
-This instrument, hereinafter referred to as the “League Constitution,” shall govern the rights, obligations, procedures, and governance structure of the Fantasy Football Keeper League (the “League”). The League shall be organized, maintained, and administered under the direction and supervision of the Commissioner, Adam Schimberg (hereinafter “the Commissioner”), whose authority and duties are established herein.
-
----
-
-## ARTICLE I: LEAGUE STRUCTURE
-
-1.1 **Membership.** The League shall consist of twelve (12) individual participants (hereinafter “Managers”), no more and no less.
-
-1.2 **Commissioner’s Authority.** The Commissioner shall serve as the chief administrative officer of the League. The Commissioner shall:
-- Establish and enforce the rules set forth herein;
-- Schedule and conduct the annual draft;
-- Oversee the collection and distribution of League dues;
-- Resolve disputes not otherwise provided for by this Constitution.
-
-1.3 **Dispute Resolution.** All disputes arising under this Constitution, including but not limited to disputes regarding trades, rule interpretation, or enforcement, shall be resolved by the Commissioner. The Commissioner’s decision shall be final and binding.
+## PREAMBLE
+Be it known, established, and ratified by the twelve (12) participating members of this Fantasy Football League (hereinafter the “League”), that the following rules, articles, and provisions shall constitute the full and binding legal framework under which the League is governed. Authority rests in the Commissioner, the duly appointed Members, and the enumerated voting procedures herein described. All provisions are binding, enforceable, and shall remain in full force until amended in accordance with Article XI.
 
 ---
 
-## ARTICLE II: SUCCESSION OF CHAMPION’S RULE
+## ARTICLE I: LEAGUE GOVERNANCE
 
-2.1 **Authority of the Champion.** The League Champion (the “Champion”), defined as the Manager winning the League Championship, shall have the authority to enact one (1) rule modification, addition, or deletion, effective immediately and enforceable until superseded by the subsequent Champion.
+**Section 1.1 – Authority of the Commissioner.**  
+The office of Commissioner, held by Adam Schimberg (hereinafter the “Commissioner”), is vested with full administrative, executive, and interpretive authority over the League, subject only to checks and balances explicitly enumerated herein. The Commissioner shall serve without term limit, and his determinations shall be deemed final and enforceable, except where challenged pursuant to Article IX.
 
-2.2 **Limitations.** Such rule modification may not:
-- Nullify the Commissioner’s authority as established in Article I;
-- Fundamentally impair the operations of the League;
-- Contravene federal, state, or local law.
-
----
-
-## ARTICLE III: OBLIGATIONS OF THE LAST-PLACE MANAGER
-
-3.1 **Obligation to Provide Jersey.** The Manager finishing in last place (the “Last-Place Manager”) shall procure and deliver to the *Camp Nebagamon for Boys Costume Closet* one (1) sports jersey. The jersey must be of a humorous, ironic, or otherwise satirical nature.
-
-3.2 **Compliance.** Failure to comply with this requirement shall subject the Last-Place Manager to sanctions as determined by the Commissioner, including but not limited to public reprimand or ineligibility for prizes in the subsequent season.
+**Section 1.2 – Membership.**  
+The League shall be composed of exactly twelve (12) Members in good standing (hereinafter the “Members”). Membership is contingent upon: (i) timely payment of financial obligations as set forth in Article II; (ii) active participation consistent with competitive integrity; and (iii) adherence to this Constitution.
 
 ---
 
-## ARTICLE IV: FINANCIAL STRUCTURE
+## ARTICLE II: LEAGUE FINANCIAL STRUCTURE
 
-4.1 **Buy-In.** Each Manager shall contribute one hundred twenty-five (125) United States Dollars as the entry fee for each League season.
+**Section 2.1 – Annual Buy-In.**  
+Each Member shall remit to the Commissioner the sum of One Hundred Twenty-Five United States Dollars ($125 USD) prior to the commencement of the annual draft. Failure to remit constitutes a breach of duty and may result in immediate forfeiture of membership rights.
 
-4.2 **Distribution of Funds.** The League’s prize pool shall be distributed as follows:
-- Champion: $1,000 (One Thousand United States Dollars);
-- Second Place: $250 (Two Hundred Fifty United States Dollars);
-- Third Place: $150 (One Hundred Fifty United States Dollars);
-- Fourth Place: $100 (One Hundred United States Dollars).
+**Section 2.2 – Disbursement of Funds.**  
+All funds collected shall be pooled and disbursed as follows:  
+- First Place Champion: $1,000 USD  
+- Second Place: $250 USD  
+- Third Place: $150 USD  
+- Fourth Place: $100 USD  
 
-4.3 **Custody of Funds.** The Commissioner shall act as Treasurer for the League and shall be responsible for the safekeeping and disbursement of all funds.
-
----
-
-## ARTICLE V: TRADING POLICY
-
-5.1 **Permissible Trades.** Managers may engage only in trades involving the exchange of player assets within the League platform.
-
-5.2 **Prohibited Consideration.** No trade shall involve consideration outside of player assets. Specifically prohibited are trades involving:
-- Cash payments;
-- Goods or services;
-- Personal favors;
-- Any form of consideration not directly related to fantasy player assets.
-
-5.3 **Enforcement.** Any transaction deemed to violate Section 5.2 shall be void ab initio, and the involved Managers may be subject to further disciplinary action as determined by the Commissioner.
-
-5.4 **Extended Overturn Authority.** Notwithstanding any standard veto period established within the League platform (including but not limited to the default twenty-four (24) hour veto window), any trade or action deemed impermissible or materially detrimental to the competitive integrity of the League may be overturned by a vote of no fewer than nine (9) of the twelve (12) Managers, provided quorum is present. The Commissioner shall execute the decision of the League upon such ruling.
+**Section 2.3 – Forfeiture Clause.**  
+Any Member failing to remit buy-in shall forfeit, without recourse, all rights to participate in the season, and the Commissioner may appoint a replacement Member at his discretion.
 
 ---
 
-## ARTICLE VI: KEEPER POLICY
+## ARTICLE III: CHAMPION PRIVILEGES
 
-6.1 **Number of Keepers.** Each Manager shall be entitled to retain up to two (2) players from the prior season (the “Keepers”).
+**Section 3.1 – Right of Unilateral Rule.**  
+The Champion of the League (hereinafter the “Champion”) shall have the exclusive right to impose one (1) rule effective for the entirety of the following season.
 
-6.2 **Keeper Round Value.** A Keeper shall be assigned the draft round in which he was originally drafted in the prior season. For each successive season in which a player is retained as a Keeper, the assigned round shall be decreased by one (1).
+**Section 3.2 – Subsequent Review of Champion Rules.**  
+At the conclusion of the Champion’s season, all Members shall vote to either (i) adopt permanently the Champion’s rule, or (ii) nullify it entirely. No modification of said rule is permitted; it must be accepted in whole or rejected in whole.
 
-6.3 **Limitations on Keeper Retention.** A player may not be retained as a Keeper once his round value would otherwise be assigned above the first (1st) round. At that point, such player shall be returned to the general draft pool.
+**Section 3.3 – Historical Champion Rules.**  
+Prior Champion-enacted rules include, but are not limited to: removal of kickers, introduction of two FLEX positions (RB/WR/TE), and point-per-first-down scoring.  
 
----
-
-## ARTICLE VII: MEMBER CONDUCT AND REMOVAL
-
-7.1 **Standard of Conduct.** Each Manager shall be expected to maintain a reasonable level of commitment to the integrity and competitive balance of the League. Such commitment includes, but is not limited to:
-- Setting valid lineups each week;
-- Avoiding trades that are careless or detrimental to the fairness of competition;
-- Demonstrating general participation in League activities.
-
-7.2 **Grounds for Removal.** A Manager may be subject to removal from the League for failure to meet the obligations in Section 7.1. Examples of conduct warranting removal include repeated failure to set lineups, reckless or exploitative trading, or persistent disregard for the League’s integrity.
-
-7.3 **Removal Procedure.** Removal shall require a vote of no fewer than seven (7) of the twelve (12) Managers, representing a simple majority. The Manager subject to removal shall not cast a vote in the matter.
-
-7.4 **Replacement.** Should removal occur, the League shall vote by simple majority to approve a replacement Manager, who shall assume all rights and obligations of League membership.
+**Section 3.4 – Current Rule.**  
+The current scoring system enacted by the previous Champion is: 1.5 PPR for tight ends, 1.0 PPR for running backs, and 0.5 PPR for wide receivers. This scoring remains binding until superseded by lawful amendment or a future Champion rule.
 
 ---
 
-**CONCLUSION:**
+## ARTICLE IV: ROSTER CONSTRUCTION AND PLAYER RETENTION
 
-By participating in the League, each Manager hereby acknowledges and consents to be bound by the provisions of this Constitution. This document shall remain in effect until amended by the Commissioner or modified by rule of the Champion as permitted under Article II.
+**Section 4.1 – Active Roster Composition.**  
+Each League team shall maintain the following roster composition:  
+- 1x Quarterback (QB)  
+- 2x Running Backs (RB)  
+- 2x Wide Receivers (WR)  
+- 1x Tight End (TE)  
+- 1x FLEX (RB/WR/TE)  
+- 1x FLEX (RB/WR/TE)  
+- 1x Defense/Special Teams (DEF)  
+- 1x Injured Reserve (IR) spot  
 
-Executed and adopted as the governing Constitution of the Fantasy Football Keeper League.
+**Section 4.2 – Keeper Rules.**  
+Each Member may retain up to two (2) Keepers. The round value of a Keeper shall correspond to its original draft position, decreased by one round per subsequent season retained. Once a Keeper’s assigned round would surpass Round One (1), that player is ineligible for retention.  
+
+**Section 4.3 – Keeper Draft Slot Integrity.**  
+Trades, waiver claims, or any other transactions shall not alter the original drafted round of a Keeper. The draft slot of origin shall remain fixed, regardless of subsequent roster movement.
+
+---
+
+## ARTICLE V: TRADES AND TRANSACTIONS
+
+**Section 5.1 – Permissible Consideration.**  
+Trades may involve only player assets and draft picks within the League.  
+
+**Section 5.2 – Impermissible Consideration.**  
+Trading of cash, goods, services, or favors unrelated to player assets is strictly prohibited.  
+
+**Section 5.3 – Veto Period.**  
+All trades are subject to a twenty-four (24) hour veto window. Trades may be nullified during this period by simple majority.  
+
+**Section 5.4 – Extended Overturn Authority.**  
+Notwithstanding expiration of the standard veto window, any transaction may be overturned retroactively upon a supermajority vote of nine (9) of twelve (12) Members, quorum required.
+
+---
+
+## ARTICLE VI: MEMBER OBLIGATIONS AND PENALTIES
+
+**Section 6.1 – Last Place Obligation.**  
+The Member finishing in last place shall provide a humorous sports jersey to the Camp Nebagamon for Boys Costume Closet.  
+
+**Section 6.2 – Negligence and Effort.**  
+Any Member failing to participate in good faith, including neglecting lineups, making reckless trades, or demonstrating general lack of effort, may be subject to removal under Article IX.
+
+---
+
+## ARTICLE VII: DISPUTE RESOLUTION AND MEMBER REMOVAL
+
+**Section 7.1 – Appeals of Commissioner Decisions.**  
+Any Member may motion to contest a ruling of the Commissioner. A simple majority vote of Members shall resolve the motion. The Commissioner shall act as tie-breaker.
+
+**Section 7.2 – Member Removal.**  
+A Member may be removed for breach of duty, negligence, or failure to maintain competitive integrity. Removal requires a simple majority vote of seven (7) Members. Replacement requires the same majority.
+
+---
+
+## ARTICLE VIII: OFFSEASON VOTING AND AMENDMENTS
+
+**Section 8.1 – Motions for Constitutional Change.**  
+Members may submit motions regarding amendments or rules changes during a single offseason voting period designated by the Commissioner.  
+
+**Section 8.2 – Voting Procedure.**  
+Adoption requires a simple majority vote, with the Commissioner acting as tie-breaker.
+
+**Section 8.3 – Current Agenda Items.**  
+Current matters include payout schemes, keeper penalty round adjustments, IR spot expansion, and draft format (snake vs. non-snake).
+
+---
+
+## ARTICLE IX: FINAL PROVISIONS
+
+**Section 9.1 – Supremacy Clause.**  
+This Constitution is the supreme governing document of the League.  
+
+**Section 9.2 – Enforcement and Interpretation.**  
+Ambiguities shall be resolved by the Commissioner unless contested via Article VII.  
+
+**Section 9.3 – Binding Effect.**  
+All Members are bound by these Articles and their Subsections upon acceptance of membership and participation in the League.
+
+---
 """
