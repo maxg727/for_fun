@@ -12,6 +12,70 @@ class StandingsModule:
     def __init__(self, db_path: str):
         self.db_path = db_path
 
+
+
+    def calculate_expected_wins(self, league_id: str) -> pd.DataFrame:
+        """Calculate expected wins for all teams"""
+        conn = sqlite3.connect(self.db_path)
+
+        # Get all matchup data
+        query = """
+            SELECT 
+                m.roster_id,
+                m.week,
+                m.points,
+                u.display_name
+            FROM matchups m
+            LEFT JOIN rosters r ON m.roster_id = r.roster_id AND m.league_id = r.league_id
+            LEFT JOIN users u ON r.owner_id = u.user_id
+            WHERE m.league_id = ? AND m.points IS NOT NULL
+            ORDER BY m.week, m.roster_id
+        """
+
+        df = pd.read_sql_query(query, conn, params=(league_id,))
+        conn.close()
+
+        if df.empty:
+            return pd.DataFrame()
+
+        # Calculate expected wins by team
+        team_stats = {}
+
+        # Process each week to calculate expected wins
+        for week in df['week'].unique():
+            week_data = df[df['week'] == week].copy()
+            week_scores = week_data['points'].tolist()
+
+            for _, row in week_data.iterrows():
+                team_name = row['display_name'] or f"Team {row['roster_id']}"
+                team_score = row['points']
+
+                # Expected wins: count how many teams this score would beat
+                teams_beaten = sum(1 for score in week_scores if team_score > score)
+
+                if team_name not in team_stats:
+                    team_stats[team_name] = {
+                        'expected_wins': 0,
+                        'actual_total': 0,
+                        'weeks_played': 0
+                    }
+
+                team_stats[team_name]['expected_wins'] += teams_beaten / (len(week_scores) - 1) if len(week_scores) > 1 else 0
+                team_stats[team_name]['actual_total'] += team_score
+                team_stats[team_name]['weeks_played'] += 1
+
+        # Convert to DataFrame
+        results = []
+        for team_name, stats in team_stats.items():
+            results.append({
+                'Team': team_name,
+                'Expected_Wins': round(stats['expected_wins'], 2),
+                'Actual_Total': round(stats['actual_total'], 1),
+                'Weeks_Played': stats['weeks_played']
+            })
+
+        return pd.DataFrame(results)
+
     def get_standings_data(self, league_id: str) -> pd.DataFrame:
         """Get comprehensive standings data from database"""
         conn = sqlite3.connect(self.db_path)
@@ -80,6 +144,18 @@ class StandingsModule:
         df = pd.DataFrame(standings_data)
 
         if not df.empty:
+            # Get expected wins
+            expected_data = self.calculate_expected_wins(league_id)
+
+            if not expected_data.empty:
+                # Merge the data
+                df = df.merge(expected_data[['Team', 'Expected_Wins']],
+                              on='Team', how='left')
+                # Fill NaN values with 0
+                df['Expected_Wins'] = df['Expected_Wins'].fillna(0)
+            else:
+                df['Expected_Wins'] = 0
+
             # Sort by wins (descending), then by points for (descending)
             df = df.sort_values(['W', 'PF'], ascending=[False, False])
             df = df.reset_index(drop=True)
@@ -152,14 +228,20 @@ class StandingsModule:
             st.warning("No standings data available")
             return
 
-        st.subheader("📊 League Standings")
+        st.subheader("League Standings")
 
         # Display table with custom styling
-        display_df = df[['Rank', 'Team', 'W', 'L', 'T', 'Win %', 'PF', 'PA', 'Diff', 'Avg PF']].copy()
+        display_df = df[['Rank', 'Team', 'W', 'L', 'T', 'Win %', 'Expected_Wins',
+                         'PF', 'PA', 'Diff', 'Avg PF']].copy()
+
+        # Rename columns for better display
+        display_df.columns = ['Rank', 'Team', 'W', 'L', 'T', 'Win %', 'Exp W',
+                              'PF', 'PA', 'Diff', 'Avg PF']
 
         # Format the dataframe
         display_df = display_df.round({
             'Win %': 3,
+            'Exp W': 2,
             'PF': 1,
             'PA': 1,
             'Diff': 1,
@@ -167,6 +249,74 @@ class StandingsModule:
         })
 
         st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+        # Add explanatory text
+        st.caption(
+            "**Exp W**: Expected wins based on weekly performance vs league")
+
+
+
+    def render_expected_wins_analysis(self, df: pd.DataFrame):
+        """Render expected wins vs actual wins analysis"""
+        if df.empty or 'Expected_Wins' not in df.columns:
+            return
+
+        st.subheader("Expected Wins vs Actual Wins")
+
+        # Create comparison chart
+        fig = go.Figure()
+
+        # Add bars for actual wins
+        fig.add_trace(go.Bar(
+            name='Actual Wins',
+            x=df['Team'],
+            y=df['W'],
+            marker_color='lightblue',
+            text=df['W'],
+            textposition='auto'
+        ))
+
+        # Add bars for expected wins
+        fig.add_trace(go.Bar(
+            name='Expected Wins',
+            x=df['Team'],
+            y=df['Expected_Wins'],
+            marker_color='orange',
+            text=[f"{val:.1f}" for val in df['Expected_Wins']],
+            textposition='auto'
+        ))
+
+        fig.update_layout(
+            height=500,
+            title="Actual vs Expected Wins",
+            xaxis_title="Team",
+            yaxis_title="Wins",
+            barmode='group',
+            xaxis_tickangle=45
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Show luck analysis
+        df_luck = df.copy()
+        df_luck['Luck'] = df_luck['W'] - df_luck['Expected_Wins']
+        df_luck = df_luck.sort_values('Luck', ascending=False)
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("**Luckiest Teams**")
+            lucky_teams = df_luck.head(3)
+            for _, team in lucky_teams.iterrows():
+                if team['Luck'] > 0:
+                    st.text(f"• {team['Team']}: +{team['Luck']:.1f} wins")
+
+        with col2:
+            st.markdown("**Unluckiest Teams**")
+            unlucky_teams = df_luck.tail(3)
+            for _, team in unlucky_teams.iterrows():
+                if team['Luck'] < 0:
+                    st.text(f"• {team['Team']}: {team['Luck']:.1f} wins")
 
     def render_standings_charts(self, df: pd.DataFrame):
         """Render standings visualization charts"""
@@ -178,7 +328,7 @@ class StandingsModule:
             rows=2, cols=2,
             subplot_titles=(
                 'Points Scored vs Win Percentage',
-                'Points For vs Points Against',
+                'Expected Wins vs Actual Wins',
                 'Win Percentage by Team',
                 'Point Differential'
             ),
@@ -200,19 +350,20 @@ class StandingsModule:
             row=1, col=1
         )
 
-        # Chart 2: PF vs PA
-        fig.add_trace(
-            go.Scatter(
-                x=df['PF'], y=df['PA'],
-                mode='markers+text',
-                text=df['Team'],
-                textposition='top center',
-                marker=dict(size=12, color=df['Win %'], colorscale='RdYlGn', showscale=False),
-                name='Teams',
-                hovertemplate='<b>%{text}</b><br>Points For: %{x}<br>Points Against: %{y}<extra></extra>'
-            ),
-            row=1, col=2
-        )
+        # Chart 2: Expected vs Actual Wins
+        if 'Expected_Wins' in df.columns:
+            fig.add_trace(
+                go.Scatter(
+                    x=df['Expected_Wins'], y=df['W'],
+                    mode='markers+text',
+                    text=df['Team'],
+                    textposition='top center',
+                    marker=dict(size=12, color=df['Win %'], colorscale='RdYlGn', showscale=False),
+                    name='Teams',
+                    hovertemplate='<b>%{text}</b><br>Expected Wins: %{x}<br>Actual Wins: %{y}<extra></extra>'
+                ),
+                row=1, col=2
+            )
 
         # Chart 3: Win % by Team
         fig.add_trace(
@@ -247,13 +398,13 @@ class StandingsModule:
 
         # Update x-axis labels
         fig.update_xaxes(title_text="Points For", row=1, col=1)
-        fig.update_xaxes(title_text="Points For", row=1, col=2)
+        fig.update_xaxes(title_text="Expected Wins", row=1, col=2)
         fig.update_xaxes(title_text="Team", row=2, col=1, tickangle=45)
         fig.update_xaxes(title_text="Team", row=2, col=2, tickangle=45)
 
         # Update y-axis labels
         fig.update_yaxes(title_text="Win Percentage", row=1, col=1)
-        fig.update_yaxes(title_text="Points Against", row=1, col=2)
+        fig.update_yaxes(title_text="Actual Wins", row=1, col=2)
         fig.update_yaxes(title_text="Win Percentage", row=2, col=1, tickformat='.1%')
         fig.update_yaxes(title_text="Point Differential", row=2, col=2)
 
@@ -267,7 +418,7 @@ class StandingsModule:
             st.info("No weekly scoring data available")
             return
 
-        st.subheader("📈 Weekly Scoring Trends")
+        st.subheader("Weekly Scoring Trends")
 
         # Select teams to show
         all_teams = weekly_df['display_name'].dropna().unique()
@@ -330,45 +481,73 @@ class StandingsModule:
                 st.metric("Weeks Completed", weeks_played)
 
     def render_power_rankings(self, df: pd.DataFrame):
-        """Render power rankings based on recent performance"""
+        """Render power rankings based on recent performance and expected wins"""
         if df.empty:
             return
 
-        st.subheader("⚡ Power Rankings")
-        st.caption("Based on points scored and win percentage")
+        st.subheader("Power Rankings")
+        st.caption("Based on points scored, win percentage, and expected wins")
 
         try:
-            # Calculate power score (combination of win % and scoring)
+            # Calculate power score (combination of win %, scoring, and expected wins)
             df_power = df.copy()
 
-            # Check for division by zero issues
-            if df_power['Win %'].max() == df_power['Win %'].min():
-                win_pct_norm = pd.Series([0.5] * len(df_power))
+            # Normalize metrics (handle edge cases where min == max)
+            def safe_normalize(series):
+                if series.max() == series.min():
+                    return pd.Series([0.5] * len(series))
+                return (series - series.min()) / (series.max() - series.min())
+
+            df_power['win_pct_norm'] = safe_normalize(df_power['Win %'])
+            df_power['pf_norm'] = safe_normalize(df_power['PF'])
+
+            if 'Expected_Wins' in df_power.columns:
+                df_power['exp_wins_norm'] = safe_normalize(df_power['Expected_Wins'])
+                # Power score: 40% win percentage, 30% points scored, 30% expected wins
+                df_power['power_score'] = (
+                        df_power['win_pct_norm'] * 0.4 +
+                        df_power['pf_norm'] * 0.3 +
+                        df_power['exp_wins_norm'] * 0.3
+                )
             else:
-                win_pct_norm = (df_power['Win %'] - df_power['Win %'].min()) / (
-                            df_power['Win %'].max() - df_power['Win %'].min())
+                # Fallback if no expected wins data
+                df_power['power_score'] = (df_power['win_pct_norm'] * 0.6) + (df_power['pf_norm'] * 0.4)
 
-            if df_power['PF'].max() == df_power['PF'].min():
-                pf_norm = pd.Series([0.5] * len(df_power))
-            else:
-                pf_norm = (df_power['PF'] - df_power['PF'].min()) / (df_power['PF'].max() - df_power['PF'].min())
-
-            df_power['win_pct_norm'] = win_pct_norm.values
-            df_power['pf_norm'] = pf_norm.values
-
-            # Power score: 60% win percentage, 40% points scored
-            df_power['power_score'] = (df_power['win_pct_norm'] * 0.6) + (df_power['pf_norm'] * 0.4)
             df_power = df_power.sort_values('power_score', ascending=False).reset_index(drop=True)
             df_power['power_rank'] = range(1, len(df_power) + 1)
 
             # Display power rankings
-            power_display = df_power[['power_rank', 'Team', 'W', 'L', 'Win %', 'PF', 'power_score']].copy()
-            power_display.columns = ['Power Rank', 'Team', 'W', 'L', 'Win %', 'PF', 'Power Score']
-            power_display = power_display.round({
+            power_cols = ['power_rank', 'Team', 'W', 'L', 'Win %', 'PF']
+            if 'Expected_Wins' in df_power.columns:
+                power_cols.append('Expected_Wins')
+            power_cols.append('power_score')
+
+            power_display = df_power[power_cols].copy()
+
+            rename_dict = {
+                'power_rank': 'Power Rank',
+                'Team': 'Team',
+                'W': 'W',
+                'L': 'L',
+                'Win %': 'Win %',
+                'PF': 'PF',
+                'power_score': 'Power Score'
+            }
+            if 'Expected_Wins' in power_display.columns:
+                rename_dict['Expected_Wins'] = 'Exp W'
+
+            power_display.columns = [rename_dict[col] for col in power_display.columns]
+
+            # Round appropriately
+            round_dict = {
                 'Win %': 3,
                 'PF': 1,
                 'Power Score': 3
-            })
+            }
+            if 'Exp W' in power_display.columns:
+                round_dict['Exp W'] = 2
+
+            power_display = power_display.round(round_dict)
 
             st.dataframe(power_display, use_container_width=True, hide_index=True)
 
@@ -413,7 +592,7 @@ class StandingsModule:
                 st.info("Not enough data to calculate momentum (need at least 4 weeks)")
                 return
 
-            st.subheader("🔥❄️ Team Momentum")
+            st.subheader("Team Momentum")
 
             # Define recent period (last 3 weeks) and previous period
             recent_weeks = 3
@@ -496,7 +675,7 @@ class StandingsModule:
             fig.add_annotation(
                 x=max_momentum * 0.7,
                 y=0.15,
-                text="🔥 HEATING UP",
+                text="HEATING UP",
                 showarrow=False,
                 font=dict(size=14, color="green"),
                 bgcolor="rgba(0,255,0,0.1)"
@@ -505,7 +684,7 @@ class StandingsModule:
             fig.add_annotation(
                 x=min_momentum * 0.7,
                 y=0.15,
-                text="❄️ COOLING DOWN",
+                text="COOLING DOWN",
                 showarrow=False,
                 font=dict(size=14, color="red"),
                 bgcolor="rgba(255,0,0,0.1)"
@@ -539,7 +718,7 @@ class StandingsModule:
             with col1:
                 biggest_riser = momentum_df.iloc[-1]  # Last one (highest momentum)
                 st.metric(
-                    "🔥 Hottest Team",
+                    "Hottest Team",
                     biggest_riser['Team'],
                     f"+{biggest_riser['Momentum']:.1f} pts"
                 )
@@ -547,7 +726,7 @@ class StandingsModule:
             with col2:
                 biggest_faller = momentum_df.iloc[0]  # First one (lowest momentum)
                 st.metric(
-                    "❄️ Coldest Team",
+                    "Coldest Team",
                     biggest_faller['Team'],
                     f"{biggest_faller['Momentum']:.1f} pts"
                 )
@@ -555,7 +734,7 @@ class StandingsModule:
             with col3:
                 stable_teams = momentum_df[abs(momentum_df['Momentum']) < 5]
                 st.metric(
-                    "😐 Stable Teams",
+                    "Stable Teams",
                     len(stable_teams),
                     "< ±5 pts change"
                 )
@@ -576,7 +755,7 @@ class StandingsModule:
                 st.info("No weekly scoring data available for consistency analysis")
                 return
 
-            st.subheader("🎯 Consistency Analysis")
+            st.subheader("Consistency Analysis")
             st.caption("Teams categorized by scoring consistency and average points")
 
             # Calculate consistency metrics for each team
@@ -677,7 +856,7 @@ class StandingsModule:
             fig.add_annotation(
                 x=median_consistency + (max_consistency - median_consistency) * 0.5,
                 y=median_score + (max_score - median_score) * 0.5,
-                text="🏆 ELITE<br>Consistent & High-Scoring",
+                text="ELITE<br>Consistent & High-Scoring",
                 showarrow=False,
                 font=dict(size=11, color="green"),
                 bgcolor="rgba(0,255,0,0.1)",
@@ -688,7 +867,7 @@ class StandingsModule:
             fig.add_annotation(
                 x=min_consistency + (median_consistency - min_consistency) * 0.5,
                 y=median_score + (max_score - median_score) * 0.5,
-                text="💥 BOOM/BUST<br>Volatile & High-Scoring",
+                text="BOOM/BUST<br>Volatile & High-Scoring",
                 showarrow=False,
                 font=dict(size=11, color="orange"),
                 bgcolor="rgba(255,165,0,0.1)",
@@ -699,7 +878,7 @@ class StandingsModule:
             fig.add_annotation(
                 x=median_consistency + (max_consistency - median_consistency) * 0.5,
                 y=min_score + (median_score - min_score) * 0.5,
-                text="🛡️ STEADY<br>Consistent & Low-Scoring",
+                text="STEADY<br>Consistent & Low-Scoring",
                 showarrow=False,
                 font=dict(size=11, color="blue"),
                 bgcolor="rgba(0,0,255,0.1)",
@@ -710,7 +889,7 @@ class StandingsModule:
             fig.add_annotation(
                 x=min_consistency + (median_consistency - min_consistency) * 0.5,
                 y=min_score + (median_score - min_score) * 0.5,
-                text="⚠️ STRUGGLING<br>Volatile & Low-Scoring",
+                text="STRUGGLING<br>Volatile & Low-Scoring",
                 showarrow=False,
                 font=dict(size=11, color="red"),
                 bgcolor="rgba(255,0,0,0.1)",
@@ -730,7 +909,7 @@ class StandingsModule:
             st.plotly_chart(fig, use_container_width=True)
 
             # Display quadrant summaries
-            st.markdown("### 📊 Quadrant Breakdown")
+            st.markdown("### Quadrant Breakdown")
 
             col1, col2 = st.columns(2)
 
@@ -741,7 +920,7 @@ class StandingsModule:
                     (consistency_df['Consistency'] >= median_consistency)
                     ].sort_values('Average Score', ascending=False)
 
-                st.markdown("#### 🏆 Elite Teams")
+                st.markdown("#### Elite Teams")
                 if not elite_teams.empty:
                     for _, team in elite_teams.iterrows():
                         st.text(f"• {team['Team']}: {team['Average Score']:.1f} pts (±{team['Std Dev']:.1f})")
@@ -754,7 +933,7 @@ class StandingsModule:
                     (consistency_df['Consistency'] < median_consistency)
                     ].sort_values('Average Score', ascending=False)
 
-                st.markdown("#### 💥 Boom/Bust Teams")
+                st.markdown("#### Boom/Bust Teams")
                 if not boom_bust.empty:
                     for _, team in boom_bust.iterrows():
                         st.text(f"• {team['Team']}: {team['Average Score']:.1f} pts (±{team['Std Dev']:.1f})")
@@ -768,7 +947,7 @@ class StandingsModule:
                     (consistency_df['Consistency'] >= median_consistency)
                     ].sort_values('Consistency', ascending=False)
 
-                st.markdown("#### 🛡️ Steady Teams")
+                st.markdown("#### Steady Teams")
                 if not steady_teams.empty:
                     for _, team in steady_teams.iterrows():
                         st.text(f"• {team['Team']}: {team['Average Score']:.1f} pts (±{team['Std Dev']:.1f})")
@@ -781,7 +960,7 @@ class StandingsModule:
                     (consistency_df['Consistency'] < median_consistency)
                     ].sort_values('Average Score', ascending=True)
 
-                st.markdown("#### ⚠️ Struggling Teams")
+                st.markdown("#### Struggling Teams")
                 if not struggling.empty:
                     for _, team in struggling.iterrows():
                         st.text(f"• {team['Team']}: {team['Average Score']:.1f} pts (±{team['Std Dev']:.1f})")
@@ -793,7 +972,7 @@ class StandingsModule:
 
     def render(self, league_id: str, season: str):
         """Main render function for standings module"""
-        st.title("📊 League Standings")
+        st.title("League Standings")
 
         # Get standings data
         standings_df = self.get_standings_data(league_id)
@@ -804,6 +983,10 @@ class StandingsModule:
 
         # Main standings table
         self.render_standings_table(standings_df)
+
+        # Expected Wins Analysis
+        st.markdown("---")
+        self.render_expected_wins_analysis(standings_df)
 
         # Visualizations
         st.markdown("---")

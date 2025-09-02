@@ -137,8 +137,51 @@ class WeeklyMatchupModule:
         with _self.connection as conn:
             return pd.read_sql(query, conn, params=(league_id, week))
 
+    @st.cache_data(ttl=300)
+    def get_week_position_averages(_self, league_id: str, week: int) -> Dict[str, float]:
+        """Calculate average points by position for starters in a specific week."""
+        query = """
+            SELECT starters, players_points
+            FROM matchups 
+            WHERE league_id = ? AND week = ? AND points IS NOT NULL
+        """
+        with _self.connection as conn:
+            df = pd.read_sql(query, conn, params=(league_id, week))
+
+        # Get players data
+        players_df = _self.get_players_table()
+        pos_map = dict(zip(players_df['player_id'], players_df['position']))
+
+        position_points = {}
+        position_counts = {}
+
+        for _, row in df.iterrows():
+            starters = _safe_json_loads(row['starters'], 'list')
+            players_points = _safe_json_loads(row['players_points'], 'dict')
+
+            for player_id in starters:
+                if player_id in players_points:
+                    position = pos_map.get(player_id, 'UNK')
+                    points = float(players_points[player_id])
+
+                    if position not in position_points:
+                        position_points[position] = 0
+                        position_counts[position] = 0
+
+                    position_points[position] += points
+                    position_counts[position] += 1
+
+        # Calculate averages
+        position_averages = {}
+        for pos in position_points:
+            if position_counts[pos] > 0:
+                position_averages[pos] = position_points[pos] / position_counts[pos]
+
+        return position_averages
+
     def calculate_matchup_analysis(self, matchup_data: pd.Series, opponent_data: pd.Series,
-                                   league_scores: pd.DataFrame, players_df: pd.DataFrame) -> Dict[str, Any]:
+                                   league_scores: pd.DataFrame, players_df: pd.DataFrame,
+                                   position_averages: Dict[str, float]) -> Dict[str, Any]:
         """Calculate comprehensive matchup analysis."""
         analysis = {}
 
@@ -180,56 +223,47 @@ class WeeklyMatchupModule:
             expected_score = league_scores['points'].median()
             analysis['expected_score'] = expected_score
             analysis['vs_expected'] = actual_score - expected_score
+
+            # Calculate expected win % - what % of league would this score beat
+            teams_beaten = (league_scores['points'] < actual_score).sum()
+            total_teams = len(league_scores)
+            analysis['expected_win_pct'] = (teams_beaten / (total_teams-1)) if total_teams > 0 else 0.0
         else:
             analysis['expected_score'] = actual_score
             analysis['vs_expected'] = 0.0
+            analysis['expected_win_pct'] = 0.5  # Default to 50% if no data
 
-        # Replace the existing player performance lines in calculate_matchup_analysis with:
-        analysis['player_comparison'] = self._get_player_performance_comparison(players_points, starters, players_df)
+        # Player performance comparison
+        analysis['player_comparison'] = self._get_player_performance_comparison(
+            players_points, starters, players_df, position_averages)
 
         return analysis
 
-    def _calculate_player_expected_points(self, players_points: Dict, players_df: pd.DataFrame) -> Dict[str, float]:
-        """Calculate expected points based on player's season average or position average."""
-        # For now, use league median by position as expected points
-        # You could enhance this with historical averages or projections
-        pos_map = dict(zip(players_df['player_id'], players_df['position']))
-
-        expected_points = {}
-        for pid in players_points.keys():
-            position = pos_map.get(pid, 'UNK')
-            # Simple expected points based on position (you can make this more sophisticated)
-            position_expected = {
-                'QB': 18.0, 'RB': 12.0, 'WR': 11.0, 'TE': 8.0,
-                'K': 7.0, 'DEF': 8.0, 'UNK': 5.0
-            }
-            expected_points[pid] = position_expected.get(position, 5.0)
-
-        return expected_points
-
     def _get_player_performance_comparison(self, players_points: Dict, starters: List,
-                                           players_df: pd.DataFrame) -> pd.DataFrame:
-        """Get all players' actual vs expected performance."""
+                                           players_df: pd.DataFrame,
+                                           position_averages: Dict[str, float]) -> pd.DataFrame:
+        """Get all players' actual vs position average performance."""
         if not players_points:
             return pd.DataFrame()
 
         name_map = dict(zip(players_df['player_id'], players_df['full_name']))
         pos_map = dict(zip(players_df['player_id'], players_df['position']))
-        expected_points = self._calculate_player_expected_points(players_points, players_df)
 
         performance_data = []
         for pid, actual_pts in players_points.items():
-            expected_pts = expected_points.get(pid, 5.0)
+            position = pos_map.get(pid, 'UNK')
+            expected_pts = position_averages.get(position, 0.0)
             diff = actual_pts - expected_pts
 
             performance_data.append({
                 'player_id': pid,
                 'name': name_map.get(pid, 'Unknown'),
-                'position': pos_map.get(pid, 'UNK'),
+                'position': position,
                 'actual_points': round(actual_pts, 1),
-                'expected_points': round(expected_pts, 1),
+                'position_avg': round(expected_pts, 1),
                 'difference': round(diff, 1),
-                'is_starter': pid in starters
+                'is_starter': pid in starters,
+                'performance_pct': round((actual_pts / expected_pts * 100) if expected_pts > 0 else 100, 1)
             })
 
         df = pd.DataFrame(performance_data)
@@ -292,166 +326,198 @@ class WeeklyMatchupModule:
         return selected_week, selected_matchup_id
 
     def render_matchup_header(self, team1_data: pd.Series, team2_data: pd.Series, week: int):
-        """Render matchup header."""
+        """Render matchup header with better styling."""
         team1_name = team1_data['team_name']
         team2_name = team2_data['team_name']
         team1_score = team1_data['points']
         team2_score = team2_data['points']
 
-        st.subheader(f"Week {week} Matchup")
+        st.markdown(f"### Week {week} Matchup")
 
-        col1, col2, col3 = st.columns([2, 1, 2])
+        # Create visual matchup header
+        col1, col2, col3 = st.columns([3, 1, 3])
 
         with col1:
-            st.metric(team1_name, f"{team1_score:.1f}")
+            if team1_score > team2_score:
+                st.success(f"🏆 **{team1_name}**")
+                st.metric("Final Score", f"{team1_score:.1f}")
+            elif team1_score < team2_score:
+                st.error(f"**{team1_name}**")
+                st.metric("Final Score", f"{team1_score:.1f}")
+            else:
+                st.info(f"**{team1_name}**")
+                st.metric("Final Score", f"{team1_score:.1f}")
 
         with col2:
-            if team1_score > team2_score:
-                st.success("Winner")
-                st.caption(f"Margin: {abs(team1_score - team2_score):.1f}")
-            elif team2_score > team1_score:
-                st.error("Loser")
-                st.caption(f"Margin: {abs(team2_score - team1_score):.1f}")
-            else:
-                st.info("Tie")
+            st.markdown("<div style='text-align: center; padding-top: 20px;'><h2>VS</h2></div>",
+                        unsafe_allow_html=True)
 
         with col3:
-            st.metric(team2_name, f"{team2_score:.1f}")
+            if team2_score > team1_score:
+                st.success(f"🏆 **{team2_name}**")
+                st.metric("Final Score", f"{team2_score:.1f}")
+            elif team2_score < team1_score:
+                st.error(f"**{team2_name}**")
+                st.metric("Final Score", f"{team2_score:.1f}")
+            else:
+                st.info(f"**{team2_name}**")
+                st.metric("Final Score", f"{team2_score:.1f}")
 
     def render_score_analysis(self, team1_analysis: Dict, team2_analysis: Dict, team1_name: str, team2_name: str):
-        """Render score analysis comparison."""
-        st.subheader("Performance Breakdown")
+        """Render improved side-by-side score analysis."""
+        st.markdown("### Performance Breakdown")
 
-        # Metrics comparison
-        col1, col2 = st.columns(2)
+        col1, col2 = st.columns(2, gap="large")
 
         with col1:
-            st.markdown(f"**{team1_name}**")
-            col_a, col_b = st.columns(2)
-            with col_a:
+            st.markdown(f"#### {team1_name}")
+
+            # Key metrics
+            metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
+            with metrics_col1:
                 st.metric("Actual Score", f"{team1_analysis['actual_score']:.1f}")
+                st.metric("vs League Median", f"{team1_analysis['vs_expected']:.1f}")
+            with metrics_col2:
                 st.metric("Optimal Score", f"{team1_analysis['optimal_score']:.1f}")
-            with col_b:
                 st.metric("Efficiency", f"{team1_analysis['lineup_efficiency']:.1%}")
-                st.metric("Bench Points Left", f"{team1_analysis['points_left_on_bench']:.1f}")
+            with metrics_col3:
+                st.metric("Expected Wins vs. League", f"{team1_analysis['expected_win_pct']:.1f}")
+                st.metric("Points Left on Bench", f"{team1_analysis['points_left_on_bench']:.1f}")
 
         with col2:
-            st.markdown(f"**{team2_name}**")
-            col_a, col_b = st.columns(2)
-            with col_a:
+            st.markdown(f"#### {team2_name}")
+
+            # Key metrics
+            metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
+            with metrics_col1:
                 st.metric("Actual Score", f"{team2_analysis['actual_score']:.1f}")
+                st.metric("vs League Median", f"{team2_analysis['vs_expected']:.1f}")
+            with metrics_col2:
                 st.metric("Optimal Score", f"{team2_analysis['optimal_score']:.1f}")
-            with col_b:
                 st.metric("Efficiency", f"{team2_analysis['lineup_efficiency']:.1%}")
-                st.metric("Bench Points Left", f"{team2_analysis['points_left_on_bench']:.1f}")
-
-        # Visual comparison
-        fig = make_subplots(
-            rows=1, cols=2,
-            subplot_titles=('Score Comparison', 'Efficiency Comparison')
-        )
-
-        # Score comparison
-        categories = ['Actual', 'Expected', 'Optimal']
-        team1_values = [team1_analysis['actual_score'], team1_analysis['expected_score'],
-                        team1_analysis['optimal_score']]
-        team2_values = [team2_analysis['actual_score'], team2_analysis['expected_score'],
-                        team2_analysis['optimal_score']]
-
-        fig.add_trace(go.Bar(
-            name=team1_name,
-            x=categories,
-            y=team1_values,
-            marker_color='lightblue'
-        ), row=1, col=1)
-
-        fig.add_trace(go.Bar(
-            name=team2_name,
-            x=categories,
-            y=team2_values,
-            marker_color='lightcoral'
-        ), row=1, col=1)
-
-        # Efficiency comparison
-        eff_categories = ['Efficiency %', 'Bench Points']
-        team1_eff = [team1_analysis['lineup_efficiency'] * 100, team1_analysis['points_left_on_bench']]
-        team2_eff = [team2_analysis['lineup_efficiency'] * 100, team2_analysis['points_left_on_bench']]
-
-        fig.add_trace(go.Bar(
-            name=team1_name,
-            x=eff_categories,
-            y=team1_eff,
-            marker_color='lightblue',
-            showlegend=False
-        ), row=1, col=2)
-
-        fig.add_trace(go.Bar(
-            name=team2_name,
-            x=eff_categories,
-            y=team2_eff,
-            marker_color='lightcoral',
-            showlegend=False
-        ), row=1, col=2)
-
-        fig.update_layout(height=400, barmode='group')
-        st.plotly_chart(fig, use_container_width=True)
+            with metrics_col3:
+                st.metric("Expected Wins vs. League", f"{team2_analysis['expected_win_pct']:.1f}")
+                st.metric("Points Left on Bench", f"{team2_analysis['points_left_on_bench']:.1f}")
 
     def render_player_performances(self, team1_analysis: Dict, team2_analysis: Dict, team1_name: str, team2_name: str):
-        """Render player actual vs expected performance comparison."""
-        st.subheader("Player Performance: Actual vs Expected")
+        """Render improved player performance comparison."""
+        st.markdown("### Player Performance Analysis")
+        st.markdown("*Comparing actual points vs positional average for the week*")
 
-        col1, col2 = st.columns(2)
+        col1, col2 = st.columns(2, gap="large")
 
         with col1:
-            st.markdown(f"**{team1_name}**")
+            st.markdown(f"#### {team1_name}")
             team1_comparison = team1_analysis['player_comparison']
             if not team1_comparison.empty:
-                # Show starters first, then bench
-                starters_df = team1_comparison[team1_comparison['is_starter']].head(10)
+                # Starters section
+                starters_df = team1_comparison[team1_comparison['is_starter']].head(12)
+                if not starters_df.empty:
+                    st.markdown("**🏃 Starters**")
+
+                    # Color code based on performance
+                    styled_starters = starters_df.copy()
+
+                    def style_performance(row):
+                        if row['difference'] > 5:
+                            return ['background-color: #d4edda'] * len(row)  # Green for good performance
+                        elif row['difference'] < -5:
+                            return ['background-color: #f8d7da'] * len(row)  # Red for poor performance
+                        else:
+                            return [''] * len(row)
+
+                    display_df = starters_df[
+                        ['name', 'position', 'actual_points', 'position_avg', 'difference', 'performance_pct']]
+                    display_df.columns = ['Player', 'Pos', 'Actual', 'Pos Avg', '+/-', '% of Avg']
+                    st.dataframe(display_df, hide_index=True, use_container_width=True)
+
+                # Top bench performers
                 bench_df = team1_comparison[~team1_comparison['is_starter']].head(5)
-
-                st.markdown("*Starters*")
-                display_df = starters_df[['name', 'position', 'actual_points', 'expected_points', 'difference']]
-                st.dataframe(display_df, hide_index=True, use_container_width=True)
-
                 if not bench_df.empty:
-                    st.markdown("*Top Bench*")
-                    display_df = bench_df[['name', 'position', 'actual_points', 'expected_points', 'difference']]
+                    st.markdown("**🪑 Top Bench Players**")
+                    display_df = bench_df[['name', 'position', 'actual_points', 'position_avg', 'difference']]
+                    display_df.columns = ['Player', 'Pos', 'Actual', 'Pos Avg', '+/-']
                     st.dataframe(display_df, hide_index=True, use_container_width=True)
 
         with col2:
-            st.markdown(f"**{team2_name}**")
+            st.markdown(f"#### {team2_name}")
             team2_comparison = team2_analysis['player_comparison']
             if not team2_comparison.empty:
-                # Show starters first, then bench
-                starters_df = team2_comparison[team2_comparison['is_starter']].head(10)
-                bench_df = team2_comparison[~team2_comparison['is_starter']].head(5)
-
-                st.markdown("*Starters*")
-                display_df = starters_df[['name', 'position', 'actual_points', 'expected_points', 'difference']]
-                st.dataframe(display_df, hide_index=True, use_container_width=True)
-
-                if not bench_df.empty:
-                    st.markdown("*Top Bench*")
-                    display_df = bench_df[['name', 'position', 'actual_points', 'expected_points', 'difference']]
+                # Starters section
+                starters_df = team2_comparison[team2_comparison['is_starter']].head(12)
+                if not starters_df.empty:
+                    st.markdown("**🏃 Starters**")
+                    display_df = starters_df[
+                        ['name', 'position', 'actual_points', 'position_avg', 'difference', 'performance_pct']]
+                    display_df.columns = ['Player', 'Pos', 'Actual', 'Pos Avg', '+/-', '% of Avg']
                     st.dataframe(display_df, hide_index=True, use_container_width=True)
 
-        # Summary of biggest over/under performers
-        st.markdown("#### Biggest Over/Under Performers")
+                # Top bench performers
+                bench_df = team2_comparison[~team2_comparison['is_starter']].head(5)
+                if not bench_df.empty:
+                    st.markdown("**🪑 Top Bench Players**")
+                    display_df = bench_df[['name', 'position', 'actual_points', 'position_avg', 'difference']]
+                    display_df.columns = ['Player', 'Pos', 'Actual', 'Pos Avg', '+/-']
+                    st.dataframe(display_df, hide_index=True, use_container_width=True)
+
+        # Week's best and worst performers
+        st.markdown("#### Weekly Performance Leaders")
 
         col1, col2 = st.columns(2)
+
+        # Combine all players from both teams
+        all_players = pd.concat([team1_analysis['player_comparison'], team2_analysis['player_comparison']])
+
         with col1:
-            st.markdown("**Biggest Overperformers**")
-            all_players = pd.concat([team1_analysis['player_comparison'], team2_analysis['player_comparison']])
+            st.markdown("**🔥 Biggest Overperformers**")
             top_over = all_players.nlargest(5, 'difference')[
-                ['name', 'position', 'actual_points', 'expected_points', 'difference']]
+                ['name', 'position', 'actual_points', 'position_avg', 'difference']]
+            top_over.columns = ['Player', 'Pos', 'Actual', 'Pos Avg', '+/-']
             st.dataframe(top_over, hide_index=True, use_container_width=True)
 
         with col2:
-            st.markdown("**Biggest Underperformers**")
+            st.markdown("**❄️ Biggest Underperformers**")
             top_under = all_players.nsmallest(5, 'difference')[
-                ['name', 'position', 'actual_points', 'expected_points', 'difference']]
+                ['name', 'position', 'actual_points', 'position_avg', 'difference']]
+            top_under.columns = ['Player', 'Pos', 'Actual', 'Pos Avg', '+/-']
             st.dataframe(top_under, hide_index=True, use_container_width=True)
+
+        # Performance distribution chart
+        st.markdown("#### Performance Distribution")
+
+        fig = make_subplots(
+            rows=1, cols=2,
+            subplot_titles=(f'{team1_name} Starters', f'{team2_name} Starters'),
+            specs=[[{"secondary_y": False}, {"secondary_y": False}]]
+        )
+
+        # Team 1 starters performance
+        team1_starters = team1_analysis['player_comparison'][team1_analysis['player_comparison']['is_starter']]
+        if not team1_starters.empty:
+            fig.add_trace(go.Bar(
+                x=team1_starters['position'],
+                y=team1_starters['difference'],
+                name=f'{team1_name}',
+                marker_color=['green' if x > 0 else 'red' for x in team1_starters['difference']],
+                showlegend=False
+            ), row=1, col=1)
+
+        # Team 2 starters performance
+        team2_starters = team2_analysis['player_comparison'][team2_analysis['player_comparison']['is_starter']]
+        if not team2_starters.empty:
+            fig.add_trace(go.Bar(
+                x=team2_starters['position'],
+                y=team2_starters['difference'],
+                name=f'{team2_name}',
+                marker_color=['green' if x > 0 else 'red' for x in team2_starters['difference']],
+                showlegend=False
+            ), row=1, col=2)
+
+        fig.add_hline(y=0, line_dash="dash", line_color="black", opacity=0.5)
+        fig.update_layout(height=400, title="Starter Performance vs Positional Average")
+        fig.update_yaxes(title_text="Points Above/Below Positional Average")
+
+        st.plotly_chart(fig, use_container_width=True)
 
     def render(self, league_id: str, season: str):
         """Main render function."""
@@ -466,6 +532,7 @@ class WeeklyMatchupModule:
             week_matchups = self.get_week_matchups(league_id, selected_week)
             league_scores = self.get_league_week_scores(league_id, selected_week)
             players_df = self.get_players_table()
+            position_averages = self.get_week_position_averages(league_id, selected_week)
 
         # Filter to selected matchup
         matchup_teams = week_matchups[week_matchups['matchup_id'] == selected_matchup_id]
@@ -478,8 +545,10 @@ class WeeklyMatchupModule:
         team2_data = matchup_teams.iloc[1]
 
         # Calculate analysis
-        team1_analysis = self.calculate_matchup_analysis(team1_data, team2_data, league_scores, players_df)
-        team2_analysis = self.calculate_matchup_analysis(team2_data, team1_data, league_scores, players_df)
+        team1_analysis = self.calculate_matchup_analysis(
+            team1_data, team2_data, league_scores, players_df, position_averages)
+        team2_analysis = self.calculate_matchup_analysis(
+            team2_data, team1_data, league_scores, players_df, position_averages)
 
         # Render sections
         self.render_matchup_header(team1_data, team2_data, selected_week)
