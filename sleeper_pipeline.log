@@ -1,0 +1,18 @@
+2025-09-02 11:57:05,283 - INFO - Initializing database...
+2025-09-02 11:57:05,324 - INFO - Database initialized successfully
+2025-09-02 11:57:05,324 - INFO - Starting full sync at 2025-09-02 11:57:05.324872
+2025-09-02 11:57:05,325 - INFO - Fetching user info for maxitopapito
+2025-09-02 11:57:05,799 - INFO - Storing 1 users
+2025-09-02 11:57:05,802 - INFO - Fetching leagues for seasons: ['2025', '2024', '2023']
+2025-09-02 11:57:06,135 - INFO - Storing leagues data
+2025-09-02 11:57:06,139 - INFO - Found 3 leagues total
+2025-09-02 11:57:06,139 - INFO - Fetching detailed data for 3 leagues
+2025-09-02 11:57:07,374 - INFO - Storing 13 users
+2025-09-02 11:57:07,378 - INFO - Storing detailed league data
+2025-09-02 11:57:07,383 - INFO - Fetching matchups for 3 leagues, weeks 1-18
+2025-09-02 11:57:13,133 - INFO - Storing matchups data
+2025-09-02 11:57:13,157 - INFO - Fetching transactions for 3 leagues
+2025-09-02 11:57:18,775 - INFO - Storing transactions data
+2025-09-02 11:57:18,810 - INFO - Fetching NFL players data
+2025-09-02 11:57:21,610 - INFO - Storing 11400 NFL players
+2025-09-02 11:57:21,737 - INFO - Full sync completed in 0:00:16.412501
