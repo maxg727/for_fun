@@ -323,90 +323,74 @@ class StandingsModule:
         if df.empty:
             return
 
-        # Create subplot with 2 rows, 2 columns
-        fig = make_subplots(
-            rows=2, cols=2,
-            subplot_titles=(
-                'Points Scored vs Win Percentage',
-                'Expected Wins vs Actual Wins',
-                'Win Percentage by Team',
-                'Point Differential'
-            ),
-            specs=[[{"secondary_y": False}, {"secondary_y": False}],
-                   [{"secondary_y": False}, {"secondary_y": False}]]
-        )
+        # Create single full-width chart for Expected vs Actual Wins
+        fig = go.Figure()
 
-        # Chart 1: Points vs Win %
-        fig.add_trace(
-            go.Scatter(
-                x=df['PF'], y=df['Win %'],
-                mode='markers+text',
-                text=df['Team'],
-                textposition='top center',
-                marker=dict(size=12, color=df['W'], colorscale='RdYlGn', showscale=False),
-                name='Teams',
-                hovertemplate='<b>%{text}</b><br>Points For: %{x}<br>Win %: %{y}<extra></extra>'
-            ),
-            row=1, col=1
-        )
-
-        # Chart 2: Expected vs Actual Wins
+        # Expected vs Actual Wins chart
         if 'Expected_Wins' in df.columns:
+            # Calculate luck but don't use for coloring
+            df_temp = df.copy()
+            df_temp['luck'] = df_temp['W'] - df_temp['Expected_Wins']
+
             fig.add_trace(
                 go.Scatter(
                     x=df['Expected_Wins'], y=df['W'],
                     mode='markers+text',
                     text=df['Team'],
                     textposition='top center',
-                    marker=dict(size=12, color=df['Win %'], colorscale='RdYlGn', showscale=False),
+                    marker=dict(size=14, color='lightblue', line=dict(width=2, color='darkblue')),
                     name='Teams',
-                    hovertemplate='<b>%{text}</b><br>Expected Wins: %{x}<br>Actual Wins: %{y}<extra></extra>'
-                ),
-                row=1, col=2
+                    hovertemplate='<b>%{text}</b><br>Expected Wins: %{x:.1f}<br>Actual Wins: %{y}<br>Luck: %{customdata:+.1f}<extra></extra>',
+                    customdata=df_temp['luck']
+                )
             )
 
-        # Chart 3: Win % by Team
-        fig.add_trace(
-            go.Bar(
-                x=df['Team'], y=df['Win %'],
-                marker_color=df['Win %'],
-                marker_colorscale='RdYlGn',
-                name='Win %',
-                hovertemplate='<b>%{x}</b><br>Win Percentage: %{y:.1%}<extra></extra>'
-            ),
-            row=2, col=1
-        )
+            # Add diagonal line (slope = 1) showing where teams "should" be
+            min_val = min(df['Expected_Wins'].min(), df['W'].min())
+            max_val = max(df['Expected_Wins'].max(), df['W'].max())
 
-        # Chart 4: Point Differential
-        colors = ['green' if diff > 0 else 'red' for diff in df['Diff']]
-        fig.add_trace(
-            go.Bar(
-                x=df['Team'], y=df['Diff'],
-                marker_color=colors,
-                name='Point Diff',
-                hovertemplate='<b>%{x}</b><br>Point Differential: %{y:+.1f}<extra></extra>'
-            ),
-            row=2, col=2
-        )
+            fig.add_trace(
+                go.Scatter(
+                    x=[min_val, max_val], y=[min_val, max_val],
+                    mode='lines',
+                    line=dict(dash='dot', color='gray', width=2),
+                    name='Expected = Actual',
+                    showlegend=False,
+                    hoverinfo='skip'
+                )
+            )
 
-        # Update layout
+            # Add annotations for lucky/unlucky regions
+            fig.add_annotation(
+                x=max_val * 0.2,
+                y=max_val * 0.8,
+                text="LUCKY<br>(Over-performing)",
+                showarrow=False,
+                font=dict(size=14, color="green"),
+                bgcolor="rgba(0,255,0,0.1)",
+                bordercolor="green",
+                borderwidth=1
+            )
+
+            fig.add_annotation(
+                x=max_val * 0.8,
+                y=max_val * 0.2,
+                text="UNLUCKY<br>(Under-performing)",
+                showarrow=False,
+                font=dict(size=14, color="red"),
+                bgcolor="rgba(255,0,0,0.1)",
+                bordercolor="red",
+                borderwidth=1
+            )
+
+        # Update layout for full-width chart
         fig.update_layout(
-            height=800,
+            height=600,
             showlegend=False,
-            title_text="League Standings Analysis"
+            title_text="Expected Wins vs Actual Wins Analysis",
+            xaxis_title="Expected Wins",
+            yaxis_title="Actual Wins"
         )
-
-        # Update x-axis labels
-        fig.update_xaxes(title_text="Points For", row=1, col=1)
-        fig.update_xaxes(title_text="Expected Wins", row=1, col=2)
-        fig.update_xaxes(title_text="Team", row=2, col=1, tickangle=45)
-        fig.update_xaxes(title_text="Team", row=2, col=2, tickangle=45)
-
-        # Update y-axis labels
-        fig.update_yaxes(title_text="Win Percentage", row=1, col=1)
-        fig.update_yaxes(title_text="Actual Wins", row=1, col=2)
-        fig.update_yaxes(title_text="Win Percentage", row=2, col=1, tickformat='.1%')
-        fig.update_yaxes(title_text="Point Differential", row=2, col=2)
 
         st.plotly_chart(fig, use_container_width=True)
 
