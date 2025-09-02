@@ -345,44 +345,6 @@ class StandingsModule:
                 )
             )
 
-            # Add diagonal line (slope = 1) showing where teams "should" be
-            min_val = min(df['Expected_Wins'].min(), df['W'].min())
-            max_val = max(df['Expected_Wins'].max(), df['W'].max())
-
-            fig.add_trace(
-                go.Scatter(
-                    x=[min_val, max_val], y=[min_val, max_val],
-                    mode='lines',
-                    line=dict(dash='dot', color='gray', width=2),
-                    name='Expected = Actual',
-                    showlegend=False,
-                    hoverinfo='skip'
-                )
-            )
-
-            # Add annotations for lucky/unlucky regions
-            fig.add_annotation(
-                x=max_val * 0.2,
-                y=max_val * 0.8,
-                text="LUCKY<br>(Over-performing)",
-                showarrow=False,
-                font=dict(size=14, color="green"),
-                bgcolor="rgba(0,255,0,0.1)",
-                bordercolor="green",
-                borderwidth=1
-            )
-
-            fig.add_annotation(
-                x=max_val * 0.8,
-                y=max_val * 0.2,
-                text="UNLUCKY<br>(Under-performing)",
-                showarrow=False,
-                font=dict(size=14, color="red"),
-                bgcolor="rgba(255,0,0,0.1)",
-                bordercolor="red",
-                borderwidth=1
-            )
-
         # Update layout for full-width chart
         fig.update_layout(
             height=600,
