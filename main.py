@@ -3,6 +3,7 @@ import sqlite3
 from pathlib import Path
 import sys
 
+from modules import rulebook
 from modules.weekly_matchup import WeeklyMatchupModule
 
 # Add modules directory to path
@@ -211,10 +212,11 @@ class SleeperDashboard:
         # Render header
         self.render_header(league_id, season)
 
-        tab1, tab2, tab3 = st.tabs([
+        tab1, tab2, tab3, tab4 = st.tabs([
             "📊 Standings",
             "📈 Team Analysis",
             "⚡ Matchups",
+            "📚Constitution"
         ])
 
         # Standings
@@ -230,6 +232,68 @@ class SleeperDashboard:
         with tab3:
             weekly_matchup_module = WeeklyMatchupModule(self.db_path)
             weekly_matchup_module.render(league_id, season)
+
+        # Rulebook
+        with tab4:
+            import modules.rulebook as rulebook
+            st.subheader("League Constitution & Rulebook")
+            st.markdown(rulebook.RULEBOOK, unsafe_allow_html=True)
+
+            st.markdown("### 📥 Download Rulebook")
+            col1, col2 = st.columns(2)
+
+            # DOCX export
+            with col1:
+                from io import BytesIO
+                try:
+                    from docx import Document
+                except ImportError:
+                    st.error("python-docx not installed. Run `pip install python-docx`.")
+                else:
+                    doc = Document()
+                    doc.add_heading("League Constitution & Rulebook", 0)
+                    doc.add_paragraph(rulebook.RULEBOOK)
+
+                    docx_buffer = BytesIO()
+                    doc.save(docx_buffer)
+                    docx_buffer.seek(0)
+
+                    st.download_button(
+                        label="📄 Download as DOCX",
+                        data=docx_buffer,
+                        file_name="league_rulebook.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    )
+
+            # PDF export
+            with col2:
+                try:
+                    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+                    from reportlab.lib.styles import getSampleStyleSheet
+                except ImportError:
+                    st.error("reportlab not installed. Run `pip install reportlab`.")
+                else:
+                    pdf_buffer = BytesIO()
+                    pdf = SimpleDocTemplate(pdf_buffer)
+                    styles = getSampleStyleSheet()
+                    story = [Paragraph("League Constitution & Rulebook", styles['Title']), Spacer(1, 12)]
+
+                    for line in rulebook.RULEBOOK.split("\n"):
+                        if line.strip():
+                            story.append(Paragraph(line, styles['Normal']))
+                            story.append(Spacer(1, 6))
+
+                    pdf.build(story)
+                    pdf_buffer.seek(0)
+
+                    st.download_button(
+                        label="📕 Download as PDF",
+                        data=pdf_buffer,
+                        file_name="league_rulebook.pdf",
+                        mime="application/pdf"
+                    )
+
+
 
 def main():
     """Main entry point"""
