@@ -5,6 +5,7 @@ import sys
 
 from modules import rulebook
 from modules.weekly_matchup import WeeklyMatchupModule
+from modules.predictions import ChampionshipOddsModule
 
 # Add modules directory to path
 sys.path.append('modules')
@@ -212,11 +213,13 @@ class SleeperDashboard:
         # Render header
         self.render_header(league_id, season)
 
-        tab1, tab2, tab3, tab4 = st.tabs([
+        # Create tabs for different modules
+        tab1, tab2, tab3, tab4, tab5 = st.tabs([
             "📊 Standings",
             "📈 Team Analysis",
+            "🏆 'KLYT' Picks",
             "⚡ Matchups",
-            "📚Constitution"
+            "📚 Constitution"
         ])
 
         # Standings
@@ -229,12 +232,18 @@ class SleeperDashboard:
             team_analysis_module = TeamAnalysisModule(self.db_path)
             team_analysis_module.render(league_id, season)
 
+        # Championship Odds
         with tab3:
+            championship_odds_module = ChampionshipOddsModule(self.db_path)
+            championship_odds_module.render(league_id, season)
+
+        # Matchups
+        with tab4:
             weekly_matchup_module = WeeklyMatchupModule(self.db_path)
             weekly_matchup_module.render(league_id, season)
 
         # Rulebook
-        with tab4:
+        with tab5:
             import modules.rulebook as rulebook
             st.subheader("League Constitution & Rulebook")
             st.markdown(rulebook.RULEBOOK, unsafe_allow_html=True)
@@ -292,7 +301,6 @@ class SleeperDashboard:
                         file_name="league_rulebook.pdf",
                         mime="application/pdf"
                     )
-
 
 
 def main():
