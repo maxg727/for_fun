@@ -1,16 +1,15 @@
-
 RULEBOOK = """
 # FANTASY FOOTBALL LEAGUE CONSTITUTION & GOVERNING INSTRUMENT
 
 ## PREAMBLE
-Be it known, established, and ratified by the twelve (12) participating members of this Fantasy Football League (hereinafter the “League”), that the following rules, articles, and provisions shall constitute the full and binding legal framework under which the League is governed. Authority rests in the Commissioner, the duly appointed Members, and the enumerated voting procedures herein described. All provisions are binding, enforceable, and shall remain in full force until amended in accordance with Article XI.
+Be it known, established, and ratified by the twelve (12) participating members of this Fantasy Football League (hereinafter the “League”), that the following rules, articles, and provisions shall constitute the full and binding legal framework under which the League is governed. Authority rests in the Commissioner, the duly appointed Members, and the enumerated voting procedures herein described. All provisions are binding, enforceable, and shall remain in full force until duly amended in accordance with Article VIII.
 
 ---
 
 ## ARTICLE I: LEAGUE GOVERNANCE
 
 **Section 1.1 – Authority of the Commissioner.**  
-The office of Commissioner, held by Adam Schimberg (hereinafter the “Commissioner”), is vested with full administrative, executive, and interpretive authority over the League, subject only to checks and balances explicitly enumerated herein. The Commissioner shall serve without term limit, and his determinations shall be deemed final and enforceable, except where challenged pursuant to Article IX.
+The office of Commissioner, held by Adam Schimberg (hereinafter the “Commissioner”), is vested with full administrative, executive, and interpretive authority over the League, subject only to checks and balances explicitly enumerated herein. The Commissioner shall serve without term limit, and his determinations shall be deemed final and enforceable, except where challenged pursuant to Article VII.
 
 **Section 1.2 – Membership.**  
 The League shall be composed of exactly twelve (12) Members in good standing (hereinafter the “Members”). Membership is contingent upon: (i) timely payment of financial obligations as set forth in Article II; (ii) active participation consistent with competitive integrity; and (iii) adherence to this Constitution.
@@ -76,8 +75,8 @@ Trades, waiver claims, or any other transactions shall not alter the original dr
 **Section 5.1 – Permissible Consideration.**  
 Trades may involve only player assets and draft picks within the League.  
 
-**Section 5.2 – Impermissible Consideration.**  
-Trading of cash, goods, services, or favors unrelated to player assets is strictly prohibited.  
+**Section 5.2 – Impermissible Consideration and Review Procedure.**  
+The trading of cash, goods, services, or favors unrelated to player assets is strictly prohibited. Any Member may, by written notice in the designated League group chat, present a motion asserting that a proposed or executed trade constitutes impermissible consideration. Upon receipt of such motion, the Commissioner shall convene and preside over a formal hearing, during which arguments may be presented by interested Members. The Commissioner shall thereafter render a binding determination as to the permissibility of the trade, subject to appeal under Article VII.  
 
 **Section 5.3 – Veto Period.**  
 All trades are subject to a twenty-four (24) hour veto window. Trades may be nullified during this period by simple majority.  
@@ -93,7 +92,7 @@ Notwithstanding expiration of the standard veto window, any transaction may be o
 The Member finishing in last place shall provide a humorous sports jersey to the Camp Nebagamon for Boys Costume Closet.  
 
 **Section 6.2 – Negligence and Effort.**  
-Any Member failing to participate in good faith, including neglecting lineups, making reckless trades, or demonstrating general lack of effort, may be subject to removal under Article IX.
+Any Member failing to participate in good faith, including neglecting lineups, making reckless trades, or demonstrating general lack of effort, may be subject to removal under Article VII.
 
 ---
 
@@ -107,16 +106,28 @@ A Member may be removed for breach of duty, negligence, or failure to maintain c
 
 ---
 
-## ARTICLE VIII: OFFSEASON VOTING AND AMENDMENTS
+## ARTICLE VIII: RULE AMENDMENTS, VOTING PROCEDURES, AND QUORUM
 
 **Section 8.1 – Motions for Constitutional Change.**  
-Members may submit motions regarding amendments or rules changes during a single offseason voting period designated by the Commissioner.  
+Members may submit motions regarding amendments or rules changes during the offseason period formally designated by the Commissioner. No new rules or amendments shall be considered after the formal commencement of the annual season, except as otherwise provided in Section 8.3.
 
-**Section 8.2 – Voting Procedure.**  
-Adoption requires a simple majority vote, with the Commissioner acting as tie-breaker.
+**Section 8.2 – Quorum Requirement.**  
+No vote of any kind shall be deemed valid unless a quorum of at least ten (10) Members is present, either in person or through recognized remote participation.  
 
-**Section 8.3 – Current Agenda Items.**  
-Current matters include payout schemes, keeper penalty round adjustments, IR spot expansion, and draft format (snake vs. non-snake).
+**Section 8.3 – Voting Thresholds.**  
+- **Offseason Amendments.** Any proposed amendment during the offseason shall be adopted upon the approval of a simple majority of Members present, provided quorum requirements are satisfied.  
+- **In-Season Amendments.** Once the season has commenced, any rule change shall require unanimous approval of all twelve (12) Members, provided quorum requirements are satisfied.  
+
+**Section 8.4 – Tie-Breaking Authority.**  
+In the event of a tie vote on any matter requiring a simple majority, the Commissioner shall serve as the deciding vote.
+
+**Section 8.5 – Pending Matters.**  
+Pending matters for offseason consideration currently include, but are not limited to:  
+(i) adjustment of payout schemes,  
+(ii) modification of keeper penalty round structures,  
+(iii) expansion of Injured Reserve (IR) eligibility,  
+(iv) draft format considerations (e.g., snake vs. non-snake), and  
+(v) the so-called "Hunter Clause," which pertains to the eligibility of players who participate on offense, defense, and/or special teams to receive touchdown scoring credit for non-offensive plays (e.g., fumble returns, punt returns, or interception returns).  
 
 ---
 
