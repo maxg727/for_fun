@@ -195,15 +195,45 @@ class TeamAnalysisModule:
         )
 
     # ---------------------------
+    # Helper method to filter played games
+    # ---------------------------
+
+    def _filter_played_games(self, matchups_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Filter out unplayed games (future weeks).
+        A game is considered played if:
+        1. Both teams have non-null points
+        2. At least one team scored > 0 points (handles edge case of actual 0-0 ties)
+        3. Has valid opponent data
+        """
+        if matchups_df.empty:
+            return matchups_df
+
+        # Filter for games with valid point data
+        valid = matchups_df[
+            matchups_df['points'].notna() &
+            matchups_df['opponent_points'].notna()
+            ].copy()
+
+        # Additional filter: exclude games where both teams scored exactly 0
+        # (likely unplayed games, as real 0-0 ties are extremely rare in fantasy)
+        played_games = valid[
+            (valid['points'] > 0) | (valid['opponent_points'] > 0)
+            ].copy()
+
+        return played_games
+
+    # ---------------------------
     # Optimized Metrics
     # ---------------------------
 
     def calculate_performance_metrics(self, matchups_df: pd.DataFrame, league_scores: pd.DataFrame) -> Dict[str, Any]:
-        """Optimized performance metrics calculation."""
+        """Optimized performance metrics calculation - only includes played games."""
         if matchups_df.empty:
             return self._empty_metrics()
 
-        valid = matchups_df[matchups_df['points'].notna()].copy()
+        # Filter to only played games
+        valid = self._filter_played_games(matchups_df)
         if valid.empty:
             return self._empty_metrics()
 
@@ -216,24 +246,29 @@ class TeamAnalysisModule:
         ties = (points == opponent_points).sum()
         games = len(valid)
 
-        # Efficient expected wins calculation
+        # Efficient expected wins calculation - only use played games
         exp_wins_total = 0.0
         for week in valid['week'].unique():
             week_data = valid[valid['week'] == week]
             if len(week_data) == 0:
                 continue
 
-            week_scores = league_scores[league_scores['week'] == week]['points']
+            # Filter league scores to only include games with actual scores > 0
+            week_league_scores = league_scores[league_scores['week'] == week]
+            week_league_scores = week_league_scores[week_league_scores['points'] > 0]
+            week_scores = week_league_scores['points']
+
             if week_scores.empty:
                 continue
 
             for points_scored in week_data['points']:
-                lower = (week_scores < points_scored).sum()
-                equal = (week_scores == points_scored).sum()
-                total_teams = len(week_scores)
+                if points_scored > 0:  # Only calculate for actual played games
+                    lower = (week_scores < points_scored).sum()
+                    equal = (week_scores == points_scored).sum()
+                    total_teams = len(week_scores)
 
-                if total_teams > 1:
-                    exp_wins_total += (lower + 0.5 * max(0, equal - 1)) / (total_teams - 1)
+                    if total_teams > 1:
+                        exp_wins_total += (lower + 0.5 * max(0, equal - 1)) / (total_teams - 1)
 
         # Calculate metrics
         win_pct = (wins + 0.5 * ties) / max(1, games)
@@ -266,14 +301,18 @@ class TeamAnalysisModule:
         }
 
     def _calculate_streak(self, valid_df: pd.DataFrame) -> str:
-        """Calculate current win/loss streak."""
+        """Calculate current win/loss streak - only for played games."""
         if valid_df.empty or 'opponent_points' not in valid_df.columns:
             return "0"
 
         results = []
         for _, row in valid_df.sort_values('week').iterrows():
-            if pd.isna(row['opponent_points']):
+            if pd.isna(row['opponent_points']) or pd.isna(row['points']):
                 continue
+            # Skip unplayed games (both teams scored 0)
+            if row['points'] == 0 and row['opponent_points'] == 0:
+                continue
+
             if row['points'] > row['opponent_points']:
                 results.append('W')
             elif row['points'] < row['opponent_points']:
@@ -294,8 +333,18 @@ class TeamAnalysisModule:
         return f"{current}{count}"
 
     def calculate_lineup_efficiency(self, matchups_df: pd.DataFrame) -> Dict[str, Any]:
-        """Optimized lineup efficiency calculation."""
+        """Optimized lineup efficiency calculation - only for played games."""
         if matchups_df.empty:
+            return {
+                "avg_efficiency": 1.0,
+                "points_left_on_bench": 0.0,
+                "perfect_weeks": 0,
+                "weekly": pd.DataFrame(columns=["week", "starter_points", "optimal_points", "lineup_efficiency"])
+            }
+
+        # Filter to only played games
+        valid_matchups = self._filter_played_games(matchups_df)
+        if valid_matchups.empty:
             return {
                 "avg_efficiency": 1.0,
                 "points_left_on_bench": 0.0,
@@ -306,7 +355,7 @@ class TeamAnalysisModule:
         weekly_data = []
         total_actual = total_optimal = total_bench_lost = perfect_weeks = 0
 
-        for _, row in matchups_df.iterrows():
+        for _, row in valid_matchups.iterrows():
             starters = row.get('starters', []) or []
             players_points = row.get('players_points', {}) or {}
 
@@ -361,9 +410,12 @@ class TeamAnalysisModule:
             """
             # Note: This assumes you have draft data - if not, you'll need to add this table/data
 
+        # Filter to only played games
+        valid_matchups = self._filter_played_games(matchups_df)
+
         # Calculate total points per player from matchups
         player_totals = {}
-        for _, row in matchups_df.iterrows():
+        for _, row in valid_matchups.iterrows():
             players_points = row.get('players_points', {}) or {}
             for pid, pts in players_points.items():
                 player_totals[pid] = player_totals.get(pid, 0) + float(pts)
@@ -416,14 +468,19 @@ class TeamAnalysisModule:
             return "D"
 
     def calculate_positional_record(self, matchups_df: pd.DataFrame, players_df: pd.DataFrame) -> pd.DataFrame:
-        """Optimized positional record calculation."""
+        """Optimized positional record calculation - only for played games."""
         if matchups_df.empty:
+            return pd.DataFrame(columns=["Position", "Games", "Record", "PF", "PA", "Diff", "Avg PF", "Avg PA"])
+
+        # Filter to only played games
+        valid_matchups = self._filter_played_games(matchups_df)
+        if valid_matchups.empty:
             return pd.DataFrame(columns=["Position", "Games", "Record", "PF", "PA", "Diff", "Avg PF", "Avg PA"])
 
         pos_map = dict(zip(players_df['player_id'], players_df['position']))
         position_stats = {}
 
-        for _, row in matchups_df.iterrows():
+        for _, row in valid_matchups.iterrows():
             my_starters = row.get('starters', []) or []
             opp_starters = row.get('opponent_starters_json', []) or []
             my_points = row.get('players_points', {}) or {}
@@ -487,8 +544,14 @@ class TeamAnalysisModule:
         return pd.DataFrame(rows).sort_values(["Diff", "PF"], ascending=[False, False])
 
     def calculate_par(self, matchups_df: pd.DataFrame, players_df: pd.DataFrame) -> pd.DataFrame:
-        """Optimized Points Above Replacement calculation."""
+        """Optimized Points Above Replacement calculation - only for played games."""
         if matchups_df.empty:
+            return pd.DataFrame(
+                columns=["player_id", "position", "weeks", "total_pts", "PAR_total", "PAR_ppw", "full_name"])
+
+        # Filter to only played games
+        valid_matchups = self._filter_played_games(matchups_df)
+        if valid_matchups.empty:
             return pd.DataFrame(
                 columns=["player_id", "position", "weeks", "total_pts", "PAR_total", "PAR_ppw", "full_name"])
 
@@ -499,7 +562,7 @@ class TeamAnalysisModule:
         player_stats = {}
         position_points = {}
 
-        for _, row in matchups_df.iterrows():
+        for _, row in valid_matchups.iterrows():
             players_points = row.get('players_points', {}) or {}
 
             for pid, points in players_points.items():
@@ -589,17 +652,17 @@ class TeamAnalysisModule:
             st.metric("Luck Index", f"{luck:+.1f}", delta_color=luck_color)
 
     def render_weekly_performance(self, matchups_df: pd.DataFrame):
-        """Optimized weekly performance chart."""
+        """Optimized weekly performance chart - only shows played games."""
         if matchups_df.empty:
             st.info("No matchup data available.")
             return
 
         st.subheader("📈 Weekly Performance")
 
-        # Prepare data
-        df = matchups_df[matchups_df['points'].notna()].copy()
+        # Filter to only played games
+        df = self._filter_played_games(matchups_df)
         if df.empty:
-            st.info("No valid matchup data.")
+            st.info("No played games yet.")
             return
 
         # Create win/loss indicators
@@ -775,15 +838,18 @@ class TeamAnalysisModule:
             st.dataframe(bottom_par, hide_index=True, use_container_width=True)
 
     def render_opponent_analysis(self, matchups_df: pd.DataFrame):
-        """Simplified opponent analysis."""
+        """Simplified opponent analysis - only for played games."""
         if matchups_df.empty or 'opponent_name' not in matchups_df.columns:
             return
 
         st.subheader("🎯 Head-to-Head Records")
 
-        valid = matchups_df[matchups_df['opponent_name'].notna()].copy()
+        # Filter to only played games
+        valid = self._filter_played_games(matchups_df)
+        valid = valid[valid['opponent_name'].notna()]
+
         if valid.empty:
-            st.info("No opponent data available.")
+            st.info("No opponent data available for played games.")
             return
 
         # Calculate head-to-head records
