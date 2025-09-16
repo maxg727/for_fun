@@ -12,8 +12,6 @@ class StandingsModule:
     def __init__(self, db_path: str):
         self.db_path = db_path
 
-
-
     def calculate_expected_wins(self, league_id: str) -> pd.DataFrame:
         """Calculate expected wins for all teams"""
         conn = sqlite3.connect(self.db_path)
@@ -53,6 +51,14 @@ class StandingsModule:
                 # Expected wins: count how many teams this score would beat
                 teams_beaten = sum(1 for score in week_scores if team_score > score)
 
+                # FIXED: Calculate the win percentage for this week
+                # If there are 12 teams, you play against 11 others
+                total_opponents = len(week_scores) - 1
+                if total_opponents > 0:
+                    week_expected_wins = teams_beaten / total_opponents
+                else:
+                    week_expected_wins = 0
+
                 if team_name not in team_stats:
                     team_stats[team_name] = {
                         'expected_wins': 0,
@@ -60,7 +66,8 @@ class StandingsModule:
                         'weeks_played': 0
                     }
 
-                team_stats[team_name]['expected_wins'] += teams_beaten / (len(week_scores) - 1) if len(week_scores) > 1 else 0
+                # FIXED: Add the full expected wins for this week (0 to 1)
+                team_stats[team_name]['expected_wins'] += week_expected_wins
                 team_stats[team_name]['actual_total'] += team_score
                 team_stats[team_name]['weeks_played'] += 1
 
